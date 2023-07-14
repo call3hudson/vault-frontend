@@ -11,7 +11,9 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 
-import { vault } from '../contracts/Vault'
+import { ethers } from 'ethers'
+
+import { vault, ivault } from '../contracts/Vault'
 
 const Withdraw = () => {
   const [state, setState] = React.useState({
@@ -19,9 +21,41 @@ const Withdraw = () => {
     price: 0,
     daiAmount: 0,
     vDaiAmount: 0,
+    inProgress: false,
   })
 
-  const withdraw = async () => {}
+  const withdraw = async () => {
+    const accounts = await ethereum.request({ method: 'eth_accounts' })
+    setState({
+      ...state,
+      inProgress: true,
+    })
+    ethereum
+      .request({
+        method: 'eth_sendTransaction',
+        params: [
+          {
+            from: accounts[0],
+            to: '0xE6d15fDe825377FD6295738856aF18fb40Ef3c6c',
+            data: ivault().encodeFunctionData('withdraw', [
+              ethers.parseEther(state.vDaiAmount.toString()),
+            ]),
+          },
+        ],
+      })
+      .then((result: any) => {
+        setState({
+          ...state,
+          inProgress: false,
+        })
+      })
+      .catch(() => {
+        setState({
+          ...state,
+          inProgress: false,
+        })
+      })
+  }
 
   const setvDaiValue = (e: any) => {
     if (e.target.value > state.vDaiBalance)
@@ -31,7 +65,7 @@ const Withdraw = () => {
 
   React.useEffect(() => {
     setState({ ...state, daiAmount: state.vDaiAmount * state.price })
-  }, [state])
+  }, [state.vDaiAmount])
 
   React.useEffect(() => {
     const initFunc = async () => {
@@ -45,7 +79,7 @@ const Withdraw = () => {
               setState({
                 ...state,
                 price: Number(price.toString().slice(0, -14)) / 10000,
-                vDaiBalance: Number(daiBalance.toString().slice(0, -18)),
+                vDaiBalance: Number(daiBalance.toString().slice(0, -16)) / 100,
               })
             })
             .catch(console.log)
@@ -95,6 +129,7 @@ const Withdraw = () => {
       </Box>
       <br />
       <Button
+        disabled={state.inProgress || state.daiAmount == 0}
         variant="contained"
         startIcon={<OutboxIcon />}
         onClick={withdraw}

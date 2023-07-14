@@ -33,7 +33,7 @@ const Deposit = () => {
       ...state,
       inProgress: true,
     })
-    if (state.daiAmount <= state.daiAllowance) {
+    if (state.daiAmount > state.daiAllowance) {
       ethereum
         .request({
           method: 'eth_sendTransaction',
@@ -43,7 +43,7 @@ const Deposit = () => {
               to: '0x809a28479C4786890F7590fbCa7a9764F2D22211',
               data: idai().encodeFunctionData('approve', [
                 '0xE6d15fDe825377FD6295738856aF18fb40Ef3c6c',
-                ethers.parseEther(state.daiBalance.toString()),
+                ethers.parseEther(state.daiAmount.toString()),
               ]),
             },
           ],
@@ -61,7 +61,6 @@ const Deposit = () => {
           })
         })
     } else {
-      alert('1243')
       ethereum
         .request({
           method: 'eth_sendTransaction',
@@ -70,7 +69,7 @@ const Deposit = () => {
               from: accounts[0],
               to: '0xE6d15fDe825377FD6295738856aF18fb40Ef3c6c',
               data: ivault().encodeFunctionData('deposit', [
-                ethers.parseEther(state.daiBalance.toString()),
+                ethers.parseEther(state.daiAmount.toString()),
               ]),
             },
           ],
@@ -98,7 +97,7 @@ const Deposit = () => {
 
   React.useEffect(() => {
     setState({ ...state, vDaiAmount: state.daiAmount / state.price })
-  }, [state])
+  }, [state.daiAmount])
 
   React.useEffect(() => {
     const initFunc = async () => {
@@ -116,8 +115,10 @@ const Deposit = () => {
                   setState({
                     ...state,
                     price: Number(price.toString().slice(0, -14)) / 10000,
-                    daiBalance: Number(daiBalance.toString().slice(0, -18)),
-                    daiAllowance: Number(allowance.toString().slice(0, -18)),
+                    daiBalance:
+                      Number(daiBalance.toString().slice(0, -16)) / 100,
+                    daiAllowance:
+                      Number(allowance.toString().slice(0, -16)) / 100,
                   })
                 })
                 .catch(console.log)

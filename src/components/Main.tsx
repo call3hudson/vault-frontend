@@ -1,8 +1,8 @@
 import React from 'react'
+import { Link } from '@mui/material'
 import SwipeableViews from 'react-swipeable-views'
 import { useTheme } from '@mui/material/styles'
 import Grid from '@mui/material/Grid'
-import Button from '@mui/material/Button'
 import AppBar from '@mui/material/AppBar'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
@@ -15,10 +15,12 @@ import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
+import CircularProgress from '@mui/material/CircularProgress'
 
 import InboxIcon from '@mui/icons-material/Inbox'
 import OutboxIcon from '@mui/icons-material/Outbox'
 import WalletIcon from '@mui/icons-material/Wallet'
+import ChangeCircle from '@mui/icons-material/ChangeCircle'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin'
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange'
@@ -68,6 +70,7 @@ export default function FullWidthTabs() {
   const theme = useTheme()
   const [state, setState] = React.useState({
     isOpened: false,
+    isLoading: true,
     tabIndex: 0,
     selectedAddress: '',
     APY: 0,
@@ -93,6 +96,39 @@ export default function FullWidthTabs() {
       .catch((err: any) => {})
   }
 
+  const switchToSepolia = async () => {
+    try {
+      await ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [
+          {
+            chainId: '0xAA36A7',
+          },
+        ],
+      })
+    } catch (switchError: object) {
+      // This error code indicates that the chain has not been added to MetaMask.
+      if (switchError.code === 4902) {
+        try {
+          await ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: '0xAA36A7',
+                chainName: 'Sepolia testnet',
+                rpcUrls: [
+                  'https://rpc.sepolia.org',
+                  'https://api.zan.top/node/v1/eth/sepolia/public',
+                  'https://eth-sepolia.public.blastapi.io',
+                ],
+              },
+            ],
+          })
+        } catch (addError) {}
+      }
+    }
+  }
+
   React.useEffect(() => {
     const initFunc = async () => {
       const accounts = await ethereum.request({ method: 'eth_accounts' })
@@ -102,6 +138,7 @@ export default function FullWidthTabs() {
           setState({
             ...state,
             isOpened: true,
+            isLoading: false,
           })
         } else {
           await vault(window.ethereum)
@@ -120,6 +157,7 @@ export default function FullWidthTabs() {
                         TVL: tvl.toString().slice(0, -18),
                         price: Number(price.toString().slice(0, -14)) / 10000,
                         isOpened: false,
+                        isLoading: false,
                       })
                     })
                     .catch(console.log)
@@ -130,6 +168,10 @@ export default function FullWidthTabs() {
         }
       } else {
         console.log('Metamask is not connected')
+        setState({
+          ...state,
+          isLoading: false,
+        })
       }
 
       ethereum.on('chainChanged', () => {
@@ -161,6 +203,7 @@ export default function FullWidthTabs() {
           >
             The Vault contract currently deployed on Sepolia Testnet. To
             continue, please switch to the Sepolia testnet.
+            <Link target={'www.ethereum.org'}>olia testnet.</Link>
           </DialogContentText>
         </DialogContent>
       </Dialog>
@@ -170,28 +213,47 @@ export default function FullWidthTabs() {
         direction="column"
         alignItems="center"
         justifyContent="center"
-        sx={{ minHeight: '100vh' }}
+        sx={{ minHeight: '100vh', background: 'transparent' }}
       >
+        <Fab
+          disabled={state.selectedAddress !== ''}
+          variant="extended"
+          sx={{
+            position: 'fixed',
+            top: 20,
+            right: 20,
+          }}
+          onClick={state.isOpened ? switchToSepolia : connectWallet}
+        >
+          {state.isLoading ? (
+            <CircularProgress
+              size={35}
+              sx={{
+                color: 'grey',
+                position: 'absolute',
+                left: 11,
+                zIndex: 1,
+              }}
+            />
+          ) : (
+            <></>
+          )}
+          {state.isOpened == true ? (
+            <ChangeCircle sx={{ mr: 1 }} />
+          ) : (
+            <WalletIcon sx={{ mr: 1 }} />
+          )}
+          {state.isOpened == true
+            ? 'Switch To...'
+            : state.selectedAddress !== ''
+            ? `Connected: ${state.selectedAddress.substring(
+                0,
+                5
+              )}...${state.selectedAddress.substring(19, 22)}`
+            : 'Connect To Wallet'}
+        </Fab>
         {state.isOpened == false ? (
           <>
-            <Fab
-              disabled={state.selectedAddress !== ''}
-              variant="extended"
-              sx={{
-                position: 'fixed',
-                top: 20,
-                right: 20,
-              }}
-              onClick={connectWallet}
-            >
-              <WalletIcon sx={{ mr: 1 }} />
-              {state.selectedAddress !== ''
-                ? `Connected: ${state.selectedAddress.substring(
-                    0,
-                    5
-                  )}...${state.selectedAddress.substring(19, 22)}`
-                : 'Connect To Wallet'}
-            </Fab>
             {state.selectedAddress === '' ? (
               <></>
             ) : (
